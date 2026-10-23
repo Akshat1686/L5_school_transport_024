@@ -5,11 +5,9 @@ on:
     branches:
       - main
       - fix/static-analysis
-
   pull_request:
     branches:
       - main
-
   workflow_dispatch:
 
 permissions:
@@ -34,7 +32,19 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pylint
 
-      - name: Analyze Python code
+      - name: Analyze Python code (generates pylint_report.txt)
+        shell: bash
         run: |
-          python -m pylint school_transport.py \
-            --fail-under=9.5
+          set +e
+          python -m pylint school_transport.py --fail-under=9.5 > pylint_report.txt 2>&1
+          code=$?
+          cat pylint_report.txt
+          exit $code
+
+      - name: Upload Pylint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pylint-report
+          path: pylint_report.txt
+          if-no-files-found: warn
