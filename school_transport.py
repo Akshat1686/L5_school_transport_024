@@ -1,10 +1,10 @@
-"""Manage school transport registrations and route fees."""
+"""Manage school transport registrations, rosters, and fees."""
 
 import sqlite3
 
 
 def create_database():
-    """Create an in-memory database for school transport records."""
+    """Create the in-memory database and riders table."""
     connection = sqlite3.connect(":memory:")
     connection.execute(
         """
@@ -21,7 +21,7 @@ def create_database():
 
 
 def enroll_rider(connection, student, route, stop, fee):
-    """Register a student for a school transport route."""
+    """Register a student using a parameterized SQL query."""
     connection.execute(
         """
         INSERT INTO riders (student, route, stop, fee)
@@ -33,7 +33,7 @@ def enroll_rider(connection, student, route, stop, fee):
 
 
 def route_roster(connection, route):
-    """Return the names of students assigned to a route."""
+    """Return student names assigned to a specified route."""
     result = connection.execute(
         "SELECT student FROM riders WHERE route = ?",
         (route,),
@@ -42,23 +42,24 @@ def route_roster(connection, route):
 
 
 def export_roster(connection, path, route):
-    """Export a route's student names to a UTF-8 text file."""
+    """Export the student roster to a UTF-8 text file."""
     with open(path, "w", encoding="utf-8") as output_file:
         for name in route_roster(connection, route):
             output_file.write(f"{name}\n")
 
 
 def dispatch_alert(route):
-    """Display a dispatch message for a bus route."""
+    """Display a bus dispatch message without invoking a shell."""
     print(f"dispatching bus {route}")
 
 
 def fee_collected(connection, route):
-    """Calculate the total fees collected for a route."""
+    """Return the total fees collected for a specified route."""
     result = connection.execute(
         "SELECT SUM(fee) FROM riders WHERE route = ?",
         (route,),
     ).fetchone()
+
     return result[0] or 0
 
 
