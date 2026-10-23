@@ -1,44 +1,86 @@
-import subprocess
+"""Manage school transport registrations and route fees."""
+
 import sqlite3
 
-conn = sqlite3.connect(":memory:")
-conn.execute("CREATE TABLE riders (id INTEGER PRIMARY KEY, student TEXT, route TEXT, stop TEXT, fee INTEGER)")
+
+def create_database():
+    """Create an in-memory database for school transport records."""
+    connection = sqlite3.connect(":memory:")
+    connection.execute(
+        """
+        CREATE TABLE riders (
+            id INTEGER PRIMARY KEY,
+            student TEXT,
+            route TEXT,
+            stop TEXT,
+            fee INTEGER
+        )
+        """
+    )
+    return connection
 
 
-def enrollRider(student,route,stop,fee):
-    conn.execute(f"INSERT INTO riders (student, route, stop, fee) VALUES ('{student}', '{route}', '{stop}', {fee})")
-    conn.commit()
+def enroll_rider(connection, student, route, stop, fee):
+    """Register a student for a school transport route."""
+    connection.execute(
+        """
+        INSERT INTO riders (student, route, stop, fee)
+        VALUES (?, ?, ?, ?)
+        """,
+        (student, route, stop, fee),
+    )
+    connection.commit()
 
 
-def routeRoster(route, driver):
-    return [r[0] for r in conn.execute("SELECT student FROM riders WHERE route = ?", (route,))]
+def route_roster(connection, route):
+    """Return the names of students assigned to a route."""
+    result = connection.execute(
+        "SELECT student FROM riders WHERE route = ?",
+        (route,),
+    )
+    return [row[0] for row in result]
 
 
-def exportRoster(path, route):
-    out = open(path, "w")
-    for name in routeRoster(route, None):
-        out.write(name + "\n")
-    out.close()
-
-def dispatchAlert(route):
-    subprocess.run("echo dispatching bus " + route, shell=True, check=False)
+def export_roster(connection, path, route):
+    """Export a route's student names to a UTF-8 text file."""
+    with open(path, "w", encoding="utf-8") as output_file:
+        for name in route_roster(connection, route):
+            output_file.write(f"{name}\n")
 
 
-def feeCollected(route):
-    try:
-        return conn.execute("SELECT SUM(fee) FROM riders WHERE route = ?", (route,)).fetchone()[0]
-    except:
-        return 0
+def dispatch_alert(route):
+    """Display a dispatch message for a bus route."""
+    print(f"dispatching bus {route}")
+
+
+def fee_collected(connection, route):
+    """Calculate the total fees collected for a route."""
+    result = connection.execute(
+        "SELECT SUM(fee) FROM riders WHERE route = ?",
+        (route,),
+    ).fetchone()
+    return result[0] or 0
 
 
 def main():
-    enrollRider("Tara", "R1", "Lake Road", 1800)
-    enrollRider("Kabir", "R1", "Mill Street", 1800)
-    enrollRider("Zoya", "R2", "Fort Gate", 2100)
-    assert feeCollected("R1") == 3600
-    exportRoster("route_r1.txt", "R1")
-    dispatchAlert("R1")
-    print(routeRoster("R2", "Mr. Das"))
+    """Run the school transport demonstration."""
+    connection = create_database()
+
+    try:
+        enroll_rider(connection, "Tara", "R1", "Lake Road", 1800)
+        enroll_rider(connection, "Kabir", "R1", "Mill Street", 1800)
+        enroll_rider(connection, "Zoya", "R2", "Fort Gate", 2100)
+
+        assert fee_collected(connection, "R1") == 3600
+
+        export_roster(connection, "route_r1.txt", "R1")
+        dispatch_alert("R1")
+
+        print(route_roster(connection, "R2"))
+
+    finally:
+        connection.close()
 
 
-main()
+if __name__ == "__main__":
+    main()
