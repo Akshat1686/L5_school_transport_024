@@ -72,7 +72,11 @@ def main():
         enroll_rider(connection, "Kabir", "R1", "Mill Street", 1800)
         enroll_rider(connection, "Zoya", "R2", "Fort Gate", 2100)
 
-        assert fee_collected(connection, "R1") == 3600
+        total_r1 = fee_collected(connection, "R1")
+        if total_r1 != 3600:
+            raise SystemExit(
+                f"Fee check failed: expected 3600, got {total_r1}"
+            )
 
         export_roster(connection, "route_r1.txt", "R1")
         dispatch_alert("R1")
